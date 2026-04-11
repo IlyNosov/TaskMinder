@@ -1,0 +1,40 @@
+version: '3.9'
+
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: taskminder-postgres
+    environment:
+      POSTGRES_DB: taskminder
+      POSTGRES_USER: taskminder
+      POSTGRES_PASSWORD: taskminder
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: taskminder-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  app:
+    build: .
+    container_name: taskminder-app
+    depends_on:
+      - postgres
+      - ollama
+    env_file:
+      - .env
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/taskminder
+      OLLAMA_URL: http://ollama:11434
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  ollama_data:
