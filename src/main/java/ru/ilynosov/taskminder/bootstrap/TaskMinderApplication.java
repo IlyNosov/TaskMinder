@@ -2,6 +2,7 @@ package ru.ilynosov.taskminder.bootstrap;
 
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
+import ru.ilynosov.taskminder.application.AdminReminderService;
 import ru.ilynosov.taskminder.application.ReminderService;
 import ru.ilynosov.taskminder.application.port.in.NLUService;
 import ru.ilynosov.taskminder.infrastructure.ai.*;
@@ -11,6 +12,7 @@ import ru.ilynosov.taskminder.infrastructure.persistence.PostgresReminderReposit
 import ru.ilynosov.taskminder.infrastructure.persistence.PostgresUserRepository;
 import ru.ilynosov.taskminder.infrastructure.scheduler.ReminderScheduler;
 import ru.ilynosov.taskminder.infrastructure.telegram.TelegramBotAdapter;
+import ru.ilynosov.taskminder.infrastructure.web.TaskMinderWebServer;
 
 import javax.sql.DataSource;
 
@@ -31,11 +33,12 @@ public class TaskMinderApplication {
 
             var scheduler = new ReminderScheduler(reminderRepository);
             scheduler.restoreActiveReminders();
-
-            var ollamaClient = new OllamaClient();
-
-            var llmRewriter = new LlmRewriteServiceImpl(ollamaClient);
-            var llmMatcher = new LlmMatchingServiceImpl(ollamaClient);
+            var llmRewriter = AppConfig.isLlmEnabled()
+                    ? new LlmRewriteServiceImpl(new OllamaClient())
+                    : new NoopLlmRewriteService();
+            var llmMatcher = AppConfig.isLlmEnabled()
+                    ? new LlmMatchingServiceImpl(new OllamaClient())
+                    : new HeuristicReminderMatchingService();
 
             var nluService = new NLUServiceImpl(
                     ruleParser,
@@ -49,8 +52,25 @@ public class TaskMinderApplication {
                     llmMatcher
             );
 
-            // Telegram
-            startTelegramBot(reminderService, nluService);
+            var adminReminderService = new AdminReminderService(
+                    reminderRepository,
+                    userRepository,
+                    scheduler
+            );
+
+            var webServer = new TaskMinderWebServer(
+                    adminReminderService,
+                    AppConfig.getWebPort()
+            );
+            webServer.start();
+            System.out.println("Web UI started on port " + AppConfig.getWebPort());
+            System.out.println("LLM mode: " + (AppConfig.isLlmEnabled() ? "enabled" : "disabled"));
+
+            if (AppConfig.isTelegramEnabled()) {
+                startTelegramBot(reminderService, nluService);
+            } else {
+                System.out.println("Telegram bot disabled: BOT_TOKEN or BOT_USERNAME is missing.");
+            }
 
             System.out.println("TaskMinder started successfully.");
         } catch (Exception e) {

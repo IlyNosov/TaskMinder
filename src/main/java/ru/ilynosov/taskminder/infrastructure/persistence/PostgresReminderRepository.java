@@ -64,6 +64,28 @@ public class PostgresReminderRepository implements ReminderRepository {
     }
 
     @Override
+    public List<Reminder> findAll() {
+
+        String sql = "SELECT * FROM reminders ORDER BY scheduled_at ASC";
+
+        List<Reminder> reminders = new ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                reminders.add(map(rs));
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return reminders;
+    }
+
+    @Override
     public List<Reminder> findActiveByUser(UUID userId) {
 
         String sql = """
@@ -114,6 +136,30 @@ public class PostgresReminderRepository implements ReminderRepository {
     }
 
     @Override
+    public void update(Reminder reminder) {
+
+        String sql = """
+            UPDATE reminders
+            SET text = ?, scheduled_at = ?, status = ?
+            WHERE id = ?
+        """;
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, reminder.getText());
+            ps.setTimestamp(2, Timestamp.valueOf(reminder.getScheduledAt()));
+            ps.setString(3, reminder.getStatus().name());
+            ps.setObject(4, reminder.getId());
+
+            ps.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     public void updateStatus(UUID reminderId, String status) {
 
         String sql = "UPDATE reminders SET status = ? WHERE id = ?";
@@ -149,11 +195,12 @@ public class PostgresReminderRepository implements ReminderRepository {
 
     private Reminder map(ResultSet rs) throws SQLException {
 
-        return new Reminder(
+        return Reminder.restore(
                 rs.getObject("id", UUID.class),
                 rs.getObject("user_id", UUID.class),
                 rs.getString("text"),
                 rs.getTimestamp("scheduled_at").toLocalDateTime(),
+                ReminderStatus.valueOf(rs.getString("status")),
                 rs.getTimestamp("created_at").toLocalDateTime()
         );
     }

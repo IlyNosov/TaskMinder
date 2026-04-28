@@ -41,6 +41,29 @@ public class PostgresUserRepository implements UserRepository {
     }
 
     @Override
+    public Optional<User> findById(UUID id) {
+
+        String sql = "SELECT * FROM users WHERE id = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setObject(1, id);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                return Optional.of(map(rs));
+            }
+
+            return Optional.empty();
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     public User save(User user) {
 
         String sql = """

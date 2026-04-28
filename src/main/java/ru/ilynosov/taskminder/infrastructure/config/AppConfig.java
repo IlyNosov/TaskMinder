@@ -33,4 +33,17 @@ public class AppConfig {
     public static String getOllamaModel() {
         return dotenv.get("OLLAMA_MODEL", "llama3.1:8b");
     }
+
+    public static boolean isLlmEnabled() {
+        return Boolean.parseBoolean(dotenv.get("LLM_ENABLED", "false"));
+    }
+
+    public static int getWebPort() {
+        return Integer.parseInt(dotenv.get("WEB_PORT", "8080"));
+    }
+
+    public static boolean isTelegramEnabled() {
+        return getBotToken() != null && !getBotToken().isBlank()
+                && getBotUsername() != null && !getBotUsername().isBlank();
+    }
 }

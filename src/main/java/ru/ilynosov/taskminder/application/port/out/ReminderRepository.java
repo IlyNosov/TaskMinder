@@ -12,9 +12,13 @@ public interface ReminderRepository {
 
     Optional<Reminder> findById(UUID id);
 
+    List<Reminder> findAll();
+
     List<Reminder> findActiveByUser(UUID userId);
 
     List<Reminder> findAllActive();
+
+    void update(Reminder reminder);
 
     void updateStatus(UUID reminderId, String status);
 
