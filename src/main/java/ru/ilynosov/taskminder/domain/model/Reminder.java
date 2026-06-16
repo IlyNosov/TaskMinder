@@ -8,8 +8,8 @@ public class Reminder {
 
     private final UUID id;
     private final UUID userId;
-    private final String text;
-    private final LocalDateTime scheduledAt;
+    private String text;
+    private LocalDateTime scheduledAt;
     private ReminderStatus status;
     private final LocalDateTime createdAt;
 
@@ -18,12 +18,22 @@ public class Reminder {
                     String text,
                     LocalDateTime scheduledAt,
                     LocalDateTime createdAt) {
+        this(id, userId, text, scheduledAt, ReminderStatus.ACTIVE, createdAt, true);
+    }
+
+    private Reminder(UUID id,
+                     UUID userId,
+                     String text,
+                     LocalDateTime scheduledAt,
+                     ReminderStatus status,
+                     LocalDateTime createdAt,
+                     boolean validateScheduledAt) {
 
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("Reminder text cannot be empty");
         }
 
-        if (scheduledAt.isBefore(LocalDateTime.now())) {
+        if (validateScheduledAt && scheduledAt.isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("Cannot create reminder in the past");
         }
 
@@ -32,7 +42,16 @@ public class Reminder {
         this.text = text.trim();
         this.scheduledAt = Objects.requireNonNull(scheduledAt);
         this.createdAt = Objects.requireNonNull(createdAt);
-        this.status = ReminderStatus.ACTIVE;
+        this.status = Objects.requireNonNull(status);
+    }
+
+    public static Reminder restore(UUID id,
+                                   UUID userId,
+                                   String text,
+                                   LocalDateTime scheduledAt,
+                                   ReminderStatus status,
+                                   LocalDateTime createdAt) {
+        return new Reminder(id, userId, text, scheduledAt, status, createdAt, false);
     }
 
     public UUID getId() {
@@ -57,6 +76,26 @@ public class Reminder {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public void updateText(String newText) {
+        if (newText == null || newText.isBlank()) {
+            throw new IllegalArgumentException("Reminder text cannot be empty");
+        }
+
+        this.text = newText.trim();
+    }
+
+    public void reschedule(LocalDateTime newScheduledAt) {
+        if (newScheduledAt == null) {
+            throw new IllegalArgumentException("Scheduled time cannot be empty");
+        }
+
+        this.scheduledAt = newScheduledAt;
+    }
+
+    public void setStatus(ReminderStatus newStatus) {
+        this.status = Objects.requireNonNull(newStatus);
     }
 
     public void markDone() {

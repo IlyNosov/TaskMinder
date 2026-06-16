@@ -23,8 +23,12 @@ public class NLUServiceImpl implements NLUService {
         if (result.getConfidence() >= 0.7)
             return result;
 
-        // LLM fallback
-        String rewritten = llmRewritePort.rewrite(input);
+        String rewritten;
+        try {
+            rewritten = llmRewritePort.rewrite(input);
+        } catch (Exception e) {
+            return result;
+        }
 
         ParseResult retry = ruleParser.parse(rewritten);
 
